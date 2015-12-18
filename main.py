@@ -6,6 +6,7 @@ import json
 import logging
 import codecs
 import requests
+import Queue
 from pymongo import MongoClient
 from bs4 import BeautifulSoup
 reload(sys)
@@ -117,11 +118,20 @@ def compare_data(data):
 
 def main():
     csv_reader.next()
+    '''
     for line in csv_reader:
         if compare_data(line):
             logger.info('Passed {} {} {}'.format(line[1], line[2], line[3]))
         else:
             logger.warn('Error {} {} {}'.format(line[1], line[2], line[3]))
+    '''
+    course_queue = Queue.Queue()
+    course_code_list = set()
+    for line in csv_reader:
+        course_code_list.add(line[1])
+    for code in course_code_list:
+        course_queue.put(code)
+    print course_queue
 
 if __name__ == '__main__':
     main()
