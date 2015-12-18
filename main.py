@@ -23,7 +23,7 @@ except Exception, e:
     sys.exit(1)
 
 
-csv_file = codecs.open('152.csv', 'rb')
+csv_file = codecs.open('152.csv', 'rb', 'gb2312')
 csv_reader = csv.reader(csv_file)
 
 s = requests.Session()
@@ -72,6 +72,7 @@ def save_data(data):
                  'classroom1', 'classroom2', 'classroom3', 'totalWeek',
                  'selectedNum', 'totalNum',
                  'isMain'], item))
+        item_dict['isMain'] = '1' if item_dict['isMain'] == u'主' else '0'
         isExist = db.course.find({'courseCode': item_dict['courseCode'],
                                   'classNO': item_dict['classNO']}).count()
         if isExist:
@@ -83,14 +84,37 @@ def save_data(data):
             db.course.insert(item_dict)
 
 
+def compare_data(data):
+    """Check if data is the same
+    Params:
+        source: data from csv file
+        target: data from website
+    Returns:
+        Bool: True for the same, False for not
+    """
+    data_dict = dict(zip(['major', 'courseCode', 'courseName', 'classNO',
+                          'teacherName', 'credit', 'classroomType', '_',
+                          'time1', 'time2', 'time3', 'totalNum',
+                          'isMain'], data))
+    origin_data = db.course.find_one({'courseCode': data_dict['courseCode'],
+                                      'classNO': data_dict['classNO']})
+    # print json.dumps(data_dict, indent=2)
+    return str(origin_data['time1']) == str(data_dict['time1']) and \
+        str(origin_data['time2']) == str(data_dict['time2']) and \
+        str(origin_data['time3']) == str(data_dict['time3']) and \
+        float(origin_data['credit']) == float(data_dict['credit']) and \
+        str(origin_data['isMain']) == str(data_dict['isMain'])
+
+
 def main():
     csv_reader.next()
     for line in csv_reader:
-        course_code = line[1]
-        print course_code
-
+        if compare_data(line):
+            print 'Passed', line[1], line[2], line[3]
+        else:
+            print 'Error', line[1], line[2], line[3]
 
 if __name__ == '__main__':
-    # main()
-    data = get_course_detail('01013')
-    save_data(data)
+    main()
+    # data = get_course_detail('15043')
+    # save_data(data)
