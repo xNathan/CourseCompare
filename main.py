@@ -3,6 +3,7 @@
 import sys
 import csv
 import json
+import logging
 import codecs
 import requests
 from pymongo import MongoClient
@@ -22,8 +23,12 @@ except Exception, e:
     print e
     sys.exit(1)
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-csv_file = codecs.open('152.csv', 'rb', 'gb2312')
+csv_file = codecs.open('152.csv', 'rb', 'gb18030')
 csv_reader = csv.reader(csv_file)
 
 s = requests.Session()
@@ -76,11 +81,13 @@ def save_data(data):
         isExist = db.course.find({'courseCode': item_dict['courseCode'],
                                   'classNO': item_dict['classNO']}).count()
         if isExist:
-            print 'Existed', item_dict['courseName'], item_dict['classNO'], \
-                item_dict['teacherName']
+            logger.info('Existed {} {} {}'.format(item_dict['courseName'],
+                                                  item_dict['classNO'],
+                                                  item_dict['teacherName']))
         else:
-            print 'Insert', item_dict['courseName'], item_dict['classNO'], \
-                item_dict['teacherName']
+            logger.info('Inserted {} {} {}'.format(item_dict['courseName'],
+                                                   item_dict['classNO'],
+                                                   item_dict['teacherName']))
             db.course.insert(item_dict)
 
 
@@ -98,23 +105,23 @@ def compare_data(data):
                           'isMain'], data))
     origin_data = db.course.find_one({'courseCode': data_dict['courseCode'],
                                       'classNO': data_dict['classNO']})
-    # print json.dumps(data_dict, indent=2)
-    return str(origin_data['time1']) == str(data_dict['time1']) and \
-        str(origin_data['time2']) == str(data_dict['time2']) and \
-        str(origin_data['time3']) == str(data_dict['time3']) and \
-        float(origin_data['credit']) == float(data_dict['credit']) and \
-        str(origin_data['isMain']) == str(data_dict['isMain'])
+    if origin_data:
+        return str(origin_data['time1']) == str(data_dict['time1']) and \
+            str(origin_data['time2']) == str(data_dict['time2']) and \
+            str(origin_data['time3']) == str(data_dict['time3']) and \
+            float(origin_data['credit']) == float(data_dict['credit']) and \
+            str(origin_data['isMain']) == str(data_dict['isMain'])
+    else:
+        logger.warning('No data')
 
 
 def main():
     csv_reader.next()
     for line in csv_reader:
         if compare_data(line):
-            print 'Passed', line[1], line[2], line[3]
+            logger.info('Passed {} {} {}'.format(line[1], line[2], line[3]))
         else:
-            print 'Error', line[1], line[2], line[3]
+            logger.warn('Error {} {} {}'.format(line[1], line[2], line[3]))
 
 if __name__ == '__main__':
     main()
-    # data = get_course_detail('15043')
-    # save_data(data)
