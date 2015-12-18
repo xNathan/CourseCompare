@@ -1,15 +1,27 @@
 # -*- coding: utf-8 -*-
 
+import sys
 import csv
 import json
 import codecs
 import requests
+from pymongo import MongoClient
 from bs4 import BeautifulSoup
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 USER_NAME = 'YOUR_USERNAME'
 PASSWORD = 'PASSWORD'
 USER_NAME = '2201401213'
 PASSWORD = '213021'
+
+try:
+    conn = MongoClient()
+    db = conn.jufexuanke
+except Exception, e:
+    print e
+    sys.exit(1)
+
 
 csv_file = codecs.open('152.csv', 'rb')
 csv_reader = csv.reader(csv_file)
@@ -51,6 +63,26 @@ def get_course_detail(course_code):
     return result
 
 
+def save_data(data):
+    for item in data:
+        item_dict = dict(
+            zip(['courseCode', 'classNO', 'credit',
+                 'courseName', 'teacherName', 'classroomType',
+                 'time1', 'time2', 'time3',
+                 'classroom1', 'classroom2', 'classroom3', 'totalWeek',
+                 'selectedNum', 'totalNum',
+                 'isMain'], item))
+        isExist = db.course.find({'courseCode': item_dict['courseCode'],
+                                  'classNO': item_dict['classNO']}).count()
+        if isExist:
+            print 'Existed', item_dict['courseName'], item_dict['classNO'], \
+                item_dict['teacherName']
+        else:
+            print 'Insert', item_dict['courseName'], item_dict['classNO'], \
+                item_dict['teacherName']
+            db.course.insert(item_dict)
+
+
 def main():
     csv_reader.next()
     for line in csv_reader:
@@ -59,4 +91,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    data = get_course_detail('01013')
+    save_data(data)
