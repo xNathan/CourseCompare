@@ -4,7 +4,6 @@ import csv
 import requests
 from bs4 import BeautifulSoup
 
-
 USER_NAME = 'YOUR_USERNAME'
 PASSWORD = 'PASSWORD'
 
@@ -22,9 +21,15 @@ assert res_url == 'http://xfz.jxufe.edu.cn/portal/main.xsp/page/-1'
 
 
 def get_course_detail(course_code):
+    """Search course detail list for speific course code and term
+    Params:
+        course_code
+    Returns:
+        A list contains all course detail lists
+    """
     url = 'http://xfz.jxufe.edu.cn/portal/main.xsp/page/-2/?.a.p=aT0lMkZ4Z'\
         'npwb3J0YWwlMkZpbmZvcjRBbGwmdD1yJnM9bm9ybWFsJmVzPWRldGFjaCZtPXZpZXc'\
-        '%3D&mlinkf=infor4All%2Findex.jsp'
+        '%3D&mlinkf=infor4All/index.jsp'
     data = {
         'doSearch': '查询',
         'searchBy': 'CourseCode',
@@ -35,12 +40,15 @@ def get_course_detail(course_code):
     response = s.post(url, data=data)
     data = response.content
     soup = BeautifulSoup(data, 'lxml')
-    for item in soup.find('table', class_='Table').find_all('tr')[1:]:
-        print item
+
+    # Get all courses data
+    courses = soup.find('table', class_='Table').find_all('tr')[1:]
+    result = map(lambda x: [i.text.strip() for i in x.find_all('td')], courses)
+    return result
 
 
 def main():
-    pass
+    get_course_detail('01013')
 
 if __name__ == '__main__':
-    get_course_detail('01013')
+    main()
