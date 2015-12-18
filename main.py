@@ -138,12 +138,14 @@ def compare_data(data):
 
 def main():
     csv_reader.next()
-    '''
+    error_list = []
     for line in csv_reader:
         if compare_data(line):
             logger.info('Passed {} {} {}'.format(line[1], line[2], line[3]))
         else:
+            error_list.append(line)
             logger.warn('Error {} {} {}'.format(line[1], line[2], line[3]))
+    print error_list
     '''
     course_queue = Queue.Queue()
     course_code_list = set()
@@ -161,6 +163,7 @@ def main():
     for thread in threads:
         thread.join()
     logger.debug('Task Done')
+    '''
 
 if __name__ == '__main__':
     main()
