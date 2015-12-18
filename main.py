@@ -6,6 +6,7 @@ import json
 import logging
 import codecs
 import requests
+import threading
 import Queue
 from pymongo import MongoClient
 from bs4 import BeautifulSoup
@@ -40,6 +41,24 @@ login_url = 'http://cas.jxufe.edu.cn/cas/login?username={}&password={}'\
             'renew=true'.format(USER_NAME, PASSWORD)
 res_url = s.get(login_url, timeout=10).url
 assert res_url == 'http://xfz.jxufe.edu.cn/portal/main.xsp/page/-1'
+
+t_lock = threading.Lock()
+
+
+class Consumer(threading.Thread):
+    def __init__(self, code_queue):
+        threading.Thread.__init__(self)
+        self.code_queue = code_queue
+
+    def run(self):
+        while True:
+            if not self.code_queue.empty():
+                t_lock.acquire()
+                course_code = self.code_queue.get()
+                data = get_course_detail(course_code)
+                save_data(data)
+                self.code_queue.task_done()
+                t_lock.release()
 
 
 def get_course_detail(course_code):
@@ -90,6 +109,7 @@ def save_data(data):
                                                    item_dict['classNO'],
                                                    item_dict['teacherName']))
             db.course.insert(item_dict)
+    return True
 
 
 def compare_data(data):
@@ -131,7 +151,16 @@ def main():
         course_code_list.add(line[1])
     for code in course_code_list:
         course_queue.put(code)
-    print course_queue
+    logger.debug('Get all course code')
+
+    threads = []
+    for i in range(60):
+        threads.append(Consumer(course_queue))
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    logger.debug('Task Done')
 
 if __name__ == '__main__':
     main()
