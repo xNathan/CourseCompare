@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import csv
+import json
+import codecs
 import requests
 from bs4 import BeautifulSoup
 
 USER_NAME = 'YOUR_USERNAME'
 PASSWORD = 'PASSWORD'
+USER_NAME = '2201401213'
+PASSWORD = '213021'
 
-_file = file('152.csv', 'rb').read()
-csv_file = csv.reader(_file)
+csv_file = codecs.open('152.csv', 'rb')
+csv_reader = csv.reader(csv_file)
 
 s = requests.Session()
 
@@ -48,7 +52,11 @@ def get_course_detail(course_code):
 
 
 def main():
-    get_course_detail('01013')
+    csv_reader.next()
+    for line in csv_reader:
+        course_code = line[1]
+        print course_code
+
 
 if __name__ == '__main__':
     main()
