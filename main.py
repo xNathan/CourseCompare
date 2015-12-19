@@ -23,8 +23,8 @@ sys.setdefaultencoding('utf-8')
 start = time.clock()
 USER_NAME = 'YOUR_USERNAME'
 PASSWORD = 'PASSWORD'
-USER_NAME = '2201401213'
-PASSWORD = '213021'
+
+WORKERS = 20
 
 try:
     conn = MongoClient()
@@ -170,7 +170,7 @@ def get_data():
     logger.debug('Get all course code')
 
     threads = []
-    for i in range(60):
+    for i in range(WORKERS):
         threads.append(Consumer(course_queue))
     for thread in threads:
         thread.setDaemon(True)
