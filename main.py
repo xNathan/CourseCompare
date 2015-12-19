@@ -189,8 +189,8 @@ def main():
         else:
             error_list.append(line)
             logger.warning('Error {} {} {}'.format(line[1], line[2], line[3]))
-    with open('result.txt', 'wb') as F:
-        F.write(json.dumps(error_list, indent=1, ensure_ascii=False))
+    with open('result.json', 'wb') as F:
+        F.write(json.dumps(error_list, indent=2, ensure_ascii=False))
     logger.info('Error list length: %s' % len(error_list))
 
 if __name__ == '__main__':
