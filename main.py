@@ -38,13 +38,13 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# open data file
+# Open data file
 csv_file = codecs.open('152.csv', 'rb', 'gb18030')
 csv_reader = csv.reader(csv_file)
 
 s = requests.Session()
 
-# First, log in
+# Log in first
 login_url = 'http://cas.jxufe.edu.cn/cas/login?username={}&password={}'\
             '&service=http://xfz.jxufe.edu.cn/portal/sso/login&'\
             'renew=true'.format(USER_NAME, PASSWORD)
@@ -56,12 +56,15 @@ t_lock = threading.Lock()
 
 
 class Consumer(threading.Thread):
+    """Get course details and save to MongoDB"""
+
     def __init__(self, code_queue):
         threading.Thread.__init__(self)
         self.code_queue = code_queue
 
     def run(self):
         while True:
+            # Get course code from code_queue
             if not self.code_queue.empty():
                 t_lock.acquire()
                 course_code = self.code_queue.get()
@@ -102,6 +105,7 @@ def get_course_detail(course_code):
 
 
 def save_data(data):
+    """Save course detail data to MongoDB"""
     for item in data:
         item_dict = dict(
             zip(['courseCode', 'classNO', 'credit',
@@ -132,11 +136,12 @@ def compare_data(data):
     Returns:
         Bool: True for the same, False for not
     """
+    # Data from csv file
     data_dict = dict(zip(['major', 'courseCode', 'courseName', 'classNO',
                           'teacherName', 'credit', 'classroomType', '_',
                           'time1', 'time2', 'time3', 'totalNum',
                           'isMain'], data))
-    # Get data from database
+    # Data from database
     origin_data = db.course.find_one({'courseCode': data_dict['courseCode'],
                                       'classNO': data_dict['classNO']})
     if origin_data:
@@ -152,6 +157,7 @@ def compare_data(data):
 
 
 def get_data():
+    """Get all course details from website"""
     course_queue = Queue.Queue()
     course_code_list = set()
     # Get all course code
@@ -174,6 +180,7 @@ def get_data():
 
 
 def main():
+    """Compare course details"""
     csv_reader.next()
     error_list = []
     for line in csv_reader:
@@ -187,7 +194,7 @@ def main():
     logger.info('Error list length: %s' % len(error_list))
 
 if __name__ == '__main__':
-    get_data()
-    main()
+    get_data()  # Get all course detail
+    main()  # Compare details
     elapsed = time.clock() - start
     logger.info('Elaspsed %s' % elapsed)
