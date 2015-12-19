@@ -52,13 +52,15 @@ class Consumer(threading.Thread):
 
     def run(self):
         while True:
-            if not self.code_queue.empty():
+            if self.code_queue.qsize() > 0:
                 t_lock.acquire()
                 course_code = self.code_queue.get()
                 data = get_course_detail(course_code)
                 save_data(data)
                 self.code_queue.task_done()
                 t_lock.release()
+            else:
+                break
 
 
 def get_course_detail(course_code):
@@ -115,8 +117,7 @@ def save_data(data):
 def compare_data(data):
     """Check if data is the same
     Params:
-        source: data from csv file
-        target: data from website
+        data: data from csv file
     Returns:
         Bool: True for the same, False for not
     """
@@ -124,6 +125,7 @@ def compare_data(data):
                           'teacherName', 'credit', 'classroomType', '_',
                           'time1', 'time2', 'time3', 'totalNum',
                           'isMain'], data))
+    # Get data from database
     origin_data = db.course.find_one({'courseCode': data_dict['courseCode'],
                                       'classNO': data_dict['classNO']})
     if origin_data:
@@ -133,7 +135,29 @@ def compare_data(data):
             float(origin_data['credit']) == float(data_dict['credit']) and \
             str(origin_data['isMain']) == str(data_dict['isMain'])
     else:
-        logger.warning('No data')
+        logger.warning('No data {} {}'.format(data_dict['courseCode'],
+                                              data_dict['classNO']))
+        return False
+
+
+def get_data():
+    course_queue = Queue.Queue()
+    course_code_list = set()
+    # Get all course code
+    for line in csv_reader:
+        course_code_list.add(line[1])
+    # Put all course code into a queue
+    for code in course_code_list:
+        course_queue.put(code)
+    logger.debug('Get all course code')
+
+    threads = []
+    for i in range(60):
+        threads.append(Consumer(course_queue))
+    for thread in threads:
+        thread.start()
+    threads.join()
+    logger.debug('Task Done')
 
 
 def main():
@@ -144,26 +168,10 @@ def main():
             logger.info('Passed {} {} {}'.format(line[1], line[2], line[3]))
         else:
             error_list.append(line)
-            logger.warn('Error {} {} {}'.format(line[1], line[2], line[3]))
-    print error_list
-    '''
-    course_queue = Queue.Queue()
-    course_code_list = set()
-    for line in csv_reader:
-        course_code_list.add(line[1])
-    for code in course_code_list:
-        course_queue.put(code)
-    logger.debug('Get all course code')
-
-    threads = []
-    for i in range(60):
-        threads.append(Consumer(course_queue))
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-    logger.debug('Task Done')
-    '''
+            logger.warning('Error {} {} {}'.format(line[1], line[2], line[3]))
+    with open('result.txt', 'wb') as F:
+        F.write(json.dumps(error_list, indent=2, ensure_ascii=False))
 
 if __name__ == '__main__':
-    main()
+    get_data()
+    # main()
