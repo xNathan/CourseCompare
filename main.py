@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
+# @Name: CourseCompare
+# @Author: xNathan
+# @Date: 2015-12-18 23:38
+# @GitHub: https://github.com/xNathan
+
+__author__ = 'xNathan'
 
 import sys
 import csv
 import json
+import time
 import logging
 import codecs
 import requests
@@ -13,6 +20,7 @@ from bs4 import BeautifulSoup
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+start = time.clock()
 USER_NAME = 'YOUR_USERNAME'
 PASSWORD = 'PASSWORD'
 USER_NAME = '2201401213'
@@ -30,6 +38,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# open data file
 csv_file = codecs.open('152.csv', 'rb', 'gb18030')
 csv_reader = csv.reader(csv_file)
 
@@ -40,6 +49,7 @@ login_url = 'http://cas.jxufe.edu.cn/cas/login?username={}&password={}'\
             '&service=http://xfz.jxufe.edu.cn/portal/sso/login&'\
             'renew=true'.format(USER_NAME, PASSWORD)
 res_url = s.get(login_url, timeout=10).url
+# check if logged in
 assert res_url == 'http://xfz.jxufe.edu.cn/portal/main.xsp/page/-1'
 
 t_lock = threading.Lock()
@@ -52,7 +62,7 @@ class Consumer(threading.Thread):
 
     def run(self):
         while True:
-            if self.code_queue.qsize() > 0:
+            if not self.code_queue.empty():
                 t_lock.acquire()
                 course_code = self.code_queue.get()
                 data = get_course_detail(course_code)
@@ -60,11 +70,12 @@ class Consumer(threading.Thread):
                 self.code_queue.task_done()
                 t_lock.release()
             else:
+                logger.debug('All codes are processed')
                 break
 
 
 def get_course_detail(course_code):
-    """Search course detail list for speific course code and term
+    """Get course detail list for speific course code and term
     Params:
         course_code
     Returns:
@@ -146,6 +157,7 @@ def get_data():
     # Get all course code
     for line in csv_reader:
         course_code_list.add(line[1])
+
     # Put all course code into a queue
     for code in course_code_list:
         course_queue.put(code)
@@ -155,8 +167,9 @@ def get_data():
     for i in range(60):
         threads.append(Consumer(course_queue))
     for thread in threads:
+        thread.setDaemon(True)
         thread.start()
-    threads.join()
+    course_queue.join()
     logger.debug('Task Done')
 
 
@@ -170,8 +183,11 @@ def main():
             error_list.append(line)
             logger.warning('Error {} {} {}'.format(line[1], line[2], line[3]))
     with open('result.txt', 'wb') as F:
-        F.write(json.dumps(error_list, indent=2, ensure_ascii=False))
+        F.write(json.dumps(error_list, indent=1, ensure_ascii=False))
+    logger.info('Error list length: %s' % len(error_list))
 
 if __name__ == '__main__':
     get_data()
-    # main()
+    main()
+    elapsed = time.clock() - start
+    logger.info('Elaspsed %s' % elapsed)
